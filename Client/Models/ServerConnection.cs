@@ -12,6 +12,7 @@ using Newtonsoft.Json;
 using NAudio.Wave;
 using System.Net;
 using System.Threading;
+using NAudio.Lame;
 
 namespace EncryptItVC.Client.Models
 {
@@ -243,6 +244,35 @@ namespace EncryptItVC.Client.Models
             
             return await SendMessageAsync(message);
         }
+        
+        public async Task<bool> UpdateVoiceStatusAsync(bool isMuted, bool isDeafened)
+        {
+            var message = new Message
+            {
+                Type = "UPDATE_VOICE_STATUS",
+                Data = new Dictionary<string, object>
+                {
+                    ["isMuted"] = isMuted,
+                    ["isDeafened"] = isDeafened
+                }
+            };
+            
+            return await SendMessageAsync(message);
+        }
+        
+        public async Task<bool> GetUsersAsync()
+        {
+            var message = new Message
+            {
+                Type = "GET_USERS",
+                Data = new Dictionary<string, object>
+                {
+                    ["channelName"] = CurrentChannel ?? "Lobby"
+                }
+            };
+            
+            return await SendMessageAsync(message);
+        }
 
         private async Task<bool> SendMessageAsync(Message message)
         {
@@ -379,6 +409,17 @@ namespace EncryptItVC.Client.Models
         public DateTime Timestamp { get; set; }
         public string Channel { get; set; } = "";
     }
+    
+    public class User
+    {
+        public string Username { get; set; } = "";
+        public string Channel { get; set; } = "";
+        public bool IsAdmin { get; set; }
+        public bool IsMuted { get; set; }
+        public bool IsDeafened { get; set; }
+        public bool IsOnline { get; set; } = true;
+        public DateTime LastSeen { get; set; } = DateTime.Now;
+    }
 
     public class VoiceManager
     {
@@ -392,6 +433,19 @@ namespace EncryptItVC.Client.Models
         private int _outputDeviceIndex = -1;
         private CancellationTokenSource _cancellationTokenSource = new();
         private BufferedWaveProvider? _waveProvider;
+        private bool _isMuted = false;
+        private bool _isDeafened = false;
+        
+        // Per-user volume control
+        private Dictionary<string, float> _userVolumes = new();
+        private ServerConnection? _serverConnection;
+        
+        public event Action<bool, bool>? StatusChanged; // muted, deafened
+        
+        public VoiceManager(ServerConnection? serverConnection = null)
+        {
+            _serverConnection = serverConnection;
+        }
 
         public bool IsRecording
         {
@@ -403,6 +457,29 @@ namespace EncryptItVC.Client.Models
         {
             get => _isPlaying;
             set => _isPlaying = value;
+        }
+        
+        public bool IsMuted
+        {
+            get => _isMuted;
+            set
+            {
+                _isMuted = value;
+                StatusChanged?.Invoke(_isMuted, _isDeafened);
+                _ = Task.Run(() => _serverConnection?.UpdateVoiceStatusAsync(_isMuted, _isDeafened));
+            }
+        }
+        
+        public bool IsDeafened
+        {
+            get => _isDeafened;
+            set
+            {
+                _isDeafened = value;
+                if (_isDeafened) _isMuted = true; // Deafened implies muted
+                StatusChanged?.Invoke(_isMuted, _isDeafened);
+                _ = Task.Run(() => _serverConnection?.UpdateVoiceStatusAsync(_isMuted, _isDeafened));
+            }
         }
 
         public List<string> GetInputDevices()
@@ -444,6 +521,26 @@ namespace EncryptItVC.Client.Models
                 _waveOut.Volume = volumeLevel / 100.0f;
             }
         }
+        
+        public void SetUserVolume(string username, float volume)
+        {
+            _userVolumes[username] = Math.Max(0f, Math.Min(2f, volume)); // 0-200% volume
+        }
+        
+        public float GetUserVolume(string username)
+        {
+            return _userVolumes.TryGetValue(username, out var volume) ? volume : 1.0f;
+        }
+        
+        public void ToggleMute()
+        {
+            IsMuted = !IsMuted;
+        }
+        
+        public void ToggleDeafen()
+        {
+            IsDeafened = !IsDeafened;
+        }
 
         public void StartRecording(UdpClient? udpClient)
         {
@@ -461,6 +558,8 @@ namespace EncryptItVC.Client.Models
                 }
                 
                 _waveIn.WaveFormat = new WaveFormat(44100, 16, 1);
+                _waveIn.BufferMilliseconds = 20; // Even smaller buffer for ultra-low latency
+                _waveIn.NumberOfBuffers = 4; // More buffers to prevent underruns
                 _waveIn.DataAvailable += OnDataAvailable;
                 _waveIn.StartRecording();
                 _isRecording = true;
@@ -490,10 +589,11 @@ namespace EncryptItVC.Client.Models
             {
                 var waveFormat = new WaveFormat(44100, 16, 1);
                 _waveProvider = new BufferedWaveProvider(waveFormat);
-                _waveProvider.BufferLength = waveFormat.SampleRate * 2; // 2 seconds buffer
+                _waveProvider.BufferLength = waveFormat.SampleRate * 2; // Increase buffer to 2 seconds for stability
                 _waveProvider.DiscardOnBufferOverflow = true;
                 
                 _waveOut = new WaveOutEvent();
+                _waveOut.DesiredLatency = 50; // Even lower latency - 50ms
                 
                 // Set specific output device if selected
                 if (_outputDeviceIndex >= 0 && _outputDeviceIndex < WaveOut.DeviceCount)
@@ -544,14 +644,17 @@ namespace EncryptItVC.Client.Models
 
         private async void OnDataAvailable(object? sender, WaveInEventArgs e)
         {
-            if (_udpClient != null && _isRecording)
+            if (_udpClient != null && _isRecording && !_isMuted)
             {
                 try
                 {
+                    // Compress audio data using MP3 (simpler than Opus for now)
+                    var compressedData = CompressAudioData(e.Buffer, e.BytesRecorded);
+                    
                     // Add voice data identifier
-                    var voicePacket = new byte[e.BytesRecorded + 4];
-                    BitConverter.GetBytes(e.BytesRecorded).CopyTo(voicePacket, 0);
-                    Array.Copy(e.Buffer, 0, voicePacket, 4, e.BytesRecorded);
+                    var voicePacket = new byte[compressedData.Length + 4];
+                    BitConverter.GetBytes(compressedData.Length).CopyTo(voicePacket, 0);
+                    Array.Copy(compressedData, 0, voicePacket, 4, compressedData.Length);
                     
                     await _udpClient.SendAsync(voicePacket, voicePacket.Length);
                 }
@@ -559,6 +662,97 @@ namespace EncryptItVC.Client.Models
                 {
                     Console.WriteLine($"Voice send error: {ex.Message}");
                 }
+            }
+        }
+        
+        private byte[] CompressAudioData(byte[] audioData, int length)
+        {
+            try
+            {
+                // Apply very light noise gate only - preserve audio quality
+                var samples = new short[length / 2];
+                Buffer.BlockCopy(audioData, 0, samples, 0, length);
+                
+                // Very gentle noise gate - only remove dead silence
+                const int noiseThreshold = 100; // Much lower threshold
+                var hasSignal = false;
+                
+                for (int i = 0; i < samples.Length; i++)
+                {
+                    var absValue = Math.Abs(samples[i]);
+                    if (absValue > noiseThreshold)
+                    {
+                        hasSignal = true;
+                        break;
+                    }
+                }
+                
+                // If completely silent, return minimal data
+                if (!hasSignal)
+                {
+                    return new byte[4]; // Just send 4 bytes to indicate silence
+                }
+                
+                // O COMPRESSION - just returnN the original audio data for best quality
+                var result = new byte[length];
+                Array.Copy(audioData, result, length);
+                return result;
+                
+                // Original MP3 compression code (disabled - caused quality issues)
+                /*
+                using var inputStream = new MemoryStream(audioData, 0, length);
+                using var outputStream = new MemoryStream();
+                
+                var inputFormat = new WaveFormat(44100, 16, 1);
+                var rawSource = new RawSourceWaveStream(inputStream, inputFormat);
+                
+                MediaFoundationEncoder.EncodeToMp3(rawSource, outputStream, 128000);
+                return outputStream.ToArray();
+                */
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Audio compression error: {ex.Message}");
+                // Fallback to uncompressed
+                var result = new byte[length];
+                Array.Copy(audioData, result, length);
+                return result;
+            }
+        }
+        
+        private byte[] DecompressAudioData(byte[] compressedData)
+        {
+            try
+            {
+                // Handle silence (minimal data)
+                if (compressedData.Length <= 4)
+                {
+                    return new byte[8820]; // Return silence buffer (~50ms at 44.1kHz 16-bit mono)
+                }
+                
+                // NO DECOMPRESSION NEEDED - just return the original audio data
+                return compressedData;
+                
+                // Original MP3 decompression code (disabled)
+                /*
+                using var inputStream = new MemoryStream(compressedData);
+                using var outputStream = new MemoryStream();
+                
+                var mp3Reader = new Mp3FileReader(inputStream);
+                
+                // Convert to our target format
+                var targetFormat = new WaveFormat(44100, 16, 1);
+                var resampler = new WaveFormatConversionStream(targetFormat, mp3Reader);
+                
+                resampler.CopyTo(outputStream);
+                return outputStream.ToArray();
+                */
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Audio decompression error: {ex.Message}");
+                // Return original data if decompression fails
+                return compressedData;
             }
         }
 
@@ -580,9 +774,19 @@ namespace EncryptItVC.Client.Models
                             var dataLength = BitConverter.ToInt32(result.Buffer, 0);
                             if (dataLength > 0 && dataLength <= result.Buffer.Length - 4)
                             {
-                                var voiceData = new byte[dataLength];
-                                Array.Copy(result.Buffer, 4, voiceData, 0, dataLength);
-                                PlayVoiceData(voiceData);
+                                var compressedData = new byte[dataLength];
+                                Array.Copy(result.Buffer, 4, compressedData, 0, dataLength);
+                                
+                                // Only play audio if not deafened
+                                if (!_isDeafened)
+                                {
+                                    // Decompress audio data
+                                    var voiceData = DecompressAudioData(compressedData);
+                                    
+                                    // TODO: Apply per-user volume from sender username
+                                    // For now, play with default volume
+                                    PlayVoiceData(voiceData);
+                                }
                             }
                         }
                     }

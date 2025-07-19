@@ -19,6 +19,7 @@ namespace EncryptItVC.Client
         private ObservableCollection<Channel> _channels;
         private ObservableCollection<ChatMessage> _chatMessages;
         private ObservableCollection<string> _users;
+        private ObservableCollection<User> _allUsers;
         private bool _isMicrophoneEnabled = false;
         private bool _isSpeakerEnabled = true;
         private DispatcherTimer _connectionTimer;
@@ -36,18 +37,39 @@ namespace EncryptItVC.Client
             
             InitializeComponent();
             _serverConnection = serverConnection;
-            _voiceManager = new VoiceManager();
+            _voiceManager = new VoiceManager(_serverConnection);
             
             _channels = new ObservableCollection<Channel>();
             _chatMessages = new ObservableCollection<ChatMessage>();
             _users = new ObservableCollection<string>();
+            _allUsers = new ObservableCollection<User>();
             
             ChannelsListBox.ItemsSource = _channels;
             ChatMessagesListBox.ItemsSource = _chatMessages;
-            UsersListBox.ItemsSource = _users;
+            
+            // Setup UserListControl
+            UserListControl.SetVoiceManager(_voiceManager);
+            
+            // Setup periodic user list refresh
+            var userRefreshTimer = new DispatcherTimer();
+            userRefreshTimer.Interval = TimeSpan.FromSeconds(10); // 10 másodpercenként
+            userRefreshTimer.Tick += async (s, e) => {
+                if (_serverConnection.IsConnected && !_isReconnecting)
+                {
+                    try
+                    {
+                        await _serverConnection.GetUsersAsync();
+                    }
+                    catch { /* Ignore errors */ }
+                }
+            };
+            userRefreshTimer.Start();
             
             _serverConnection.MessageReceived += OnMessageReceived;
             _serverConnection.ConnectionLost += OnConnectionLost;
+            
+            // Setup voice manager events
+            _voiceManager.StatusChanged += OnVoiceStatusChanged;
             
             InitializeUI();
             InitializeConnectionMonitor();
@@ -55,19 +77,41 @@ namespace EncryptItVC.Client
             // Load channels after UI is ready
             this.Loaded += async (s, e) => await LoadChannels();
         }
+        
+        private void OnVoiceStatusChanged(bool isMuted, bool isDeafened)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                MuteButton.Content = isMuted ? "🔇" : "🎤";
+                MuteButton.Background = isMuted ? 
+                    new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Red) : 
+                    new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Green);
+                    
+                DeafenButton.Content = isDeafened ? "🔇" : "🔊";
+                DeafenButton.Background = isDeafened ? 
+                    new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Red) : 
+                    new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Green);
+            });
+        }
 
         private void InitializeConnectionMonitor()
         {
             _connectionTimer = new DispatcherTimer();
-            _connectionTimer.Interval = TimeSpan.FromSeconds(5);
+            _connectionTimer.Interval = TimeSpan.FromSeconds(10); // Növeljük az intervallumot
             _connectionTimer.Tick += async (s, e) => await CheckConnection();
-            _connectionTimer.Start();
             
             // Add automatic refresh timer
             var refreshTimer = new DispatcherTimer();
-            refreshTimer.Interval = TimeSpan.FromSeconds(3);
+            refreshTimer.Interval = TimeSpan.FromSeconds(30); // Lassítjuk 30 másodpercre
             refreshTimer.Tick += async (s, e) => await RefreshData();
             refreshTimer.Start();
+            
+            // Csak akkor indítsuk el a connection monitoring-ot, ha már tényleg csatlakozva vagyunk
+            if (_serverConnection.IsConnected)
+            {
+                UpdateConnectionStatus(true);
+                _connectionTimer.Start();
+            }
         }
 
         private async Task RefreshData()
@@ -135,9 +179,14 @@ namespace EncryptItVC.Client
         {
             if (_isReconnecting || _serverConnection == null) return;
             
+            // Ne ellenőrizzük túl gyakran, ha már tudjuk hogy nincs kapcsolat
             if (!_serverConnection.IsConnected)
             {
-                await HandleConnectionLost();
+                // Csak akkor próbáljunk újracsatlakozni, ha korábban kapcsolódva voltunk
+                if (_connectionTimer.IsEnabled) // Ez jelzi, hogy korábban csatlakozva voltunk
+                {
+                    await HandleConnectionLost();
+                }
             }
             else
             {
@@ -150,15 +199,19 @@ namespace EncryptItVC.Client
             if (_isReconnecting) return;
             
             _isReconnecting = true;
+            _connectionTimer?.Stop(); // Állítsuk le a connection monitoring-ot
             UpdateConnectionStatus(false);
             
             // Add system message about connection loss
-            _chatMessages.Add(new ChatMessage
+            Dispatcher.Invoke(() =>
             {
-                Username = "SYSTEM",
-                Content = "Connection lost. Attempting to reconnect...",
-                Timestamp = DateTime.Now,
-                Channel = _serverConnection.CurrentChannel
+                _chatMessages.Add(new ChatMessage
+                {
+                    Username = "SYSTEM",
+                    Content = "Connection lost. Attempting to reconnect...",
+                    Timestamp = DateTime.Now,
+                    Channel = _serverConnection.CurrentChannel ?? "Unknown"
+                });
             });
             
             // Try to reconnect (3 attempts)
@@ -170,43 +223,52 @@ namespace EncryptItVC.Client
                 
                 if (!reconnected)
                 {
-                    _chatMessages.Add(new ChatMessage
+                    Dispatcher.Invoke(() =>
                     {
-                        Username = "SYSTEM",
-                        Content = $"Reconnection attempt {i + 1} failed...",
-                        Timestamp = DateTime.Now,
-                        Channel = _serverConnection.CurrentChannel
+                        _chatMessages.Add(new ChatMessage
+                        {
+                            Username = "SYSTEM",
+                            Content = $"Reconnection attempt {i + 1} failed...",
+                            Timestamp = DateTime.Now,
+                            Channel = _serverConnection.CurrentChannel ?? "Unknown"
+                        });
                     });
                 }
             }
             
             if (reconnected)
             {
-                _chatMessages.Add(new ChatMessage
+                Dispatcher.Invoke(() =>
                 {
-                    Username = "SYSTEM",
-                    Content = "Reconnected successfully!",
-                    Timestamp = DateTime.Now,
-                    Channel = _serverConnection.CurrentChannel
+                    _chatMessages.Add(new ChatMessage
+                    {
+                        Username = "SYSTEM",
+                        Content = "Reconnected successfully!",
+                        Timestamp = DateTime.Now,
+                        Channel = _serverConnection.CurrentChannel ?? "Unknown"
+                    });
                 });
                 
                 // Reload channels after reconnection
                 await LoadChannels();
                 UpdateConnectionStatus(true);
+                _connectionTimer?.Start(); // Indítsuk újra a monitoring-ot
             }
             else
             {
-                _chatMessages.Add(new ChatMessage
+                Dispatcher.Invoke(() =>
                 {
-                    Username = "SYSTEM",
-                    Content = "Failed to reconnect after 3 attempts. Asking user for manual reconnection.",
-                    Timestamp = DateTime.Now,
-                    Channel = _serverConnection.CurrentChannel
+                    _chatMessages.Add(new ChatMessage
+                    {
+                        Username = "SYSTEM",
+                        Content = "Failed to reconnect after 3 attempts.",
+                        Timestamp = DateTime.Now,
+                        Channel = _serverConnection.CurrentChannel ?? "Unknown"
+                    });
                 });
                 
-                // Show reconnection dialog instead of login dialog
-                await Task.Delay(2000); // Give user time to read the message
-                ShowReconnectionDialog();
+                // Ne mutassunk automatikusan dialógust, csak logoljuk
+                // A felhasználó manuálisan tud újracsatlakozni a Disconnect gombbal
             }
             
             _isReconnecting = false;
@@ -258,68 +320,6 @@ namespace EncryptItVC.Client
                 {
                     ConnectionStatusTextBlock.Text = "Not connected";
                     ConnectionStatusTextBlock.Foreground = System.Windows.Media.Brushes.Red;
-                }
-            });
-        }
-
-        private void ShowReconnectionDialog()
-        {
-            Dispatcher.Invoke(() =>
-            {
-                // Prevent multiple dialogs
-                if (_isReconnecting) return;
-                
-                var result = MessageBox.Show(
-                    "Failed to reconnect automatically. Would you like to try manual reconnection?", 
-                    "Reconnection Failed", 
-                    MessageBoxButton.YesNo, 
-                    MessageBoxImage.Question);
-                
-                if (result == MessageBoxResult.Yes)
-                {
-                    // Try manual reconnection using stored credentials
-                    _ = Task.Run(async () => await AttemptReconnection());
-                }
-                else
-                {
-                    // User chose not to reconnect, close application completely
-                    Application.Current.Shutdown();
-                }
-            });
-        }
-
-        private void ShowLoginDialog()
-        {
-            Dispatcher.Invoke(() =>
-            {
-                // Prevent multiple dialogs
-                if (_isReconnecting) return;
-                _isReconnecting = true;
-                
-                _connectionTimer?.Stop();
-                _serverConnection?.Disconnect();
-                
-                // Clear UI state
-                _chatMessages.Clear();
-                _channels.Clear();
-                _users.Clear();
-                
-                // Don't create new window, just show message and restart connection
-                var result = MessageBox.Show(
-                    "Connection lost. Would you like to reconnect?", 
-                    "Connection Lost", 
-                    MessageBoxButton.YesNo, 
-                    MessageBoxImage.Question);
-                
-                if (result == MessageBoxResult.Yes)
-                {
-                    // Instead of creating new window, try to reconnect with existing credentials
-                    _ = Task.Run(async () => await AttemptReconnection());
-                }
-                else
-                {
-                    // User chose not to reconnect, close application
-                    Application.Current.Shutdown();
                 }
             });
         }
@@ -512,10 +512,38 @@ namespace EncryptItVC.Client
                 case "USERS_LIST":
                     var channelUsers = message.Data["users"] as Newtonsoft.Json.Linq.JArray;
                     _users.Clear();
-                    foreach (var user in channelUsers)
+                    var usersList = new List<User>();
+                    if (channelUsers != null)
                     {
-                        _users.Add(user.ToString());
+                        foreach (var userObj in channelUsers)
+                        {
+                            var username = userObj["username"]?.ToString() ?? "";
+                            var isMuted = userObj["isMuted"]?.ToObject<bool>() ?? false;
+                            var isDeafened = userObj["isDeafened"]?.ToObject<bool>() ?? false;
+                            var isAdmin = userObj["isAdmin"]?.ToObject<bool>() ?? false;
+                            
+                            _users.Add(username);
+                            usersList.Add(new User 
+                            { 
+                                Username = username,
+                                IsMuted = isMuted,
+                                IsDeafened = isDeafened,
+                                IsAdmin = isAdmin
+                            });
+                        }
                     }
+                    
+                    // Update UserListControl with fresh data
+                    UserListControl.UpdateUsers(usersList);
+                    break;
+                    
+                case "USER_VOICE_STATUS":
+                    var statusUsername = message.Data["username"]?.ToString() ?? "";
+                    var statusMuted = (bool)(message.Data["isMuted"] ?? false);
+                    var statusDeafened = (bool)(message.Data["isDeafened"] ?? false);
+                    
+                    // Update the user's voice status in the UI
+                    UserListControl.UpdateUserVoiceStatus(statusUsername, statusMuted, statusDeafened);
                     break;
                     
                 case "PERMISSION_GRANTED":
@@ -724,13 +752,23 @@ namespace EncryptItVC.Client
                 SpeakerButton.Background = System.Windows.Media.Brushes.Gray;
             }
         }
+        
+        private void MuteButton_Click(object sender, RoutedEventArgs e)
+        {
+            _voiceManager.ToggleMute();
+        }
+        
+        private void DeafenButton_Click(object sender, RoutedEventArgs e)
+        {
+            _voiceManager.ToggleDeafen();
+        }
 
-        private void GrantPermissionButton_Click(object sender, RoutedEventArgs e)
+        private async void GrantPermissionButton_Click(object sender, RoutedEventArgs e)
         {
             var permissionDialog = new PermissionDialog();
             if (permissionDialog.ShowDialog() == true)
             {
-                _serverConnection.GrantPermissionAsync(permissionDialog.Username, permissionDialog.Permission);
+                await _serverConnection.GrantPermissionAsync(permissionDialog.Username, permissionDialog.Permission);
             }
         }
 
@@ -790,7 +828,7 @@ namespace EncryptItVC.Client
                 }
                 
                 // Make sure we don't trigger reconnection on manual close
-                _serverConnection = null;
+                _serverConnection = null!;
                 _isReconnecting = false;
                 
                 // Reset the static flag so a new MainWindow can be created
