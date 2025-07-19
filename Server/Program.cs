@@ -68,6 +68,8 @@ namespace EncryptItVC.Server
         public bool CanCreateChannels { get; set; }
         public DateTime LastLogin { get; set; }
         public List<string> OwnedChannels { get; set; } = new List<string>();
+        public bool IsMuted { get; set; } = false;
+        public bool IsDeafened { get; set; } = false;
     }
 
     public class Channel
@@ -311,6 +313,9 @@ namespace EncryptItVC.Server
                     break;
                 case "GRANT_PERMISSION":
                     await HandleGrantPermissionAsync(connection, message);
+                    break;
+                case "UPDATE_VOICE_STATUS":
+                    await HandleUpdateVoiceStatusAsync(connection, message);
                     break;
                 default:
                     Console.WriteLine($"Unknown message type: {message.Type}");
@@ -645,7 +650,16 @@ namespace EncryptItVC.Server
         {
             if (!connection.IsAuthenticated) return;
             
-            var channelName = message.Data["channelName"].ToString();
+            // Ha nincs channelName paraméter, használjuk a user jelenlegi csatornáját
+            string channelName;
+            if (message.Data.ContainsKey("channelName"))
+            {
+                channelName = message.Data["channelName"]?.ToString() ?? "Lobby";
+            }
+            else
+            {
+                channelName = connection.CurrentChannel ?? "Lobby";
+            }
             
             if (!_channels.ContainsKey(channelName))
             {
@@ -664,7 +678,13 @@ namespace EncryptItVC.Server
                 Data = new Dictionary<string, object>
                 {
                     ["channelName"] = channelName,
-                    ["users"] = _channels[channelName].Members
+                    ["users"] = _channels[channelName].Members.Select(username => new
+                    {
+                        username = username,
+                        isMuted = _users.ContainsKey(username) ? _users[username].IsMuted : false,
+                        isDeafened = _users.ContainsKey(username) ? _users[username].IsDeafened : false,
+                        isAdmin = _users.ContainsKey(username) ? _users[username].IsAdmin : false
+                    }).ToList()
                 }
             };
             
@@ -712,6 +732,40 @@ namespace EncryptItVC.Server
             
             await SendMessageAsync(connection, response2);
             Console.WriteLine($"🔑 Permission '{permission}' granted to '{targetUsername}' by '{connection.Username}'");
+        }
+
+        private async Task HandleUpdateVoiceStatusAsync(ClientConnection connection, Message message)
+        {
+            if (!connection.IsAuthenticated) return;
+            
+            var isMuted = (bool)message.Data["isMuted"];
+            var isDeafened = (bool)message.Data["isDeafened"];
+            
+            // Update user's voice status
+            if (connection.User != null)
+            {
+                connection.User.IsMuted = isMuted;
+                connection.User.IsDeafened = isDeafened;
+                
+                Console.WriteLine($"🔊 User '{connection.Username}' voice status: muted={isMuted}, deafened={isDeafened}");
+                
+                // Broadcast voice status update to all users in the same channel
+                var statusMessage = new Message
+                {
+                    Type = "USER_VOICE_STATUS",
+                    Data = new Dictionary<string, object>
+                    {
+                        ["username"] = connection.Username,
+                        ["isMuted"] = isMuted,
+                        ["isDeafened"] = isDeafened
+                    }
+                };
+                
+                if (!string.IsNullOrEmpty(connection.CurrentChannel))
+                {
+                    await BroadcastToChannelAsync(connection.CurrentChannel, statusMessage, connection);
+                }
+            }
         }
 
         private async Task HandleVoiceDataAsync()

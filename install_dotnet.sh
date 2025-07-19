@@ -22,10 +22,10 @@ fi
 if [ -f /etc/debian_version ]; then
     echo "Detected Debian/Ubuntu system"
     sudo apt update
-    sudo apt install -y dotnet-runtime-6.0
+    sudo apt install -y dotnet-runtime-9.0 || sudo apt install -y dotnet-runtime-8.0 || sudo apt install -y dotnet-runtime-7.0 || sudo apt install -y dotnet-runtime-6.0
 elif [ -f /etc/redhat-release ]; then
     echo "Detected Red Hat/CentOS/Fedora system"
-    sudo dnf install -y dotnet-runtime-6.0
+    sudo dnf install -y dotnet-runtime-9.0 || sudo dnf install -y dotnet-runtime-8.0 || sudo dnf install -y dotnet-runtime-7.0 || sudo dnf install -y dotnet-runtime-6.0
 elif [[ "$OSTYPE" == "darwin"* ]]; then
     echo "Detected macOS system"
     if command -v brew &> /dev/null; then
@@ -41,4 +41,11 @@ else
 fi
 
 echo "✅ .NET Runtime installation completed!"
-echo "You can now run the server with: ./start_server.sh"
+echo "Verifying installation..."
+if command -v dotnet &> /dev/null; then
+    echo "✅ .NET version: $(dotnet --version)"
+    echo "You can now run the server with: ./start_server.sh"
+else
+    echo "❌ Installation verification failed. Please check manually."
+    exit 1
+fi
