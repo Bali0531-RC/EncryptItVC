@@ -1,0 +1,145 @@
+name: Build EncryptItVC
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-server:
+    runs-on: ubuntu-latest
+    name: Build Server
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+        
+    - name: Restore dependencies
+      run: dotnet restore Server/EncryptItVC.Server.csproj
+      
+    - name: Build Server
+      run: dotnet build Server/EncryptItVC.Server.csproj --no-restore --configuration Release
+      
+    - name: Test Server
+      run: dotnet test Server/EncryptItVC.Server.csproj --no-build --verbosity normal --configuration Release
+      continue-on-error: true
+
+  build-client-windows:
+    runs-on: windows-latest
+    name: Build Windows Client
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '6.0.x'
+        
+    - name: Restore dependencies
+      run: dotnet restore Client/EncryptItVC.Client.csproj
+      
+    - name: Build Client
+      run: dotnet build Client/EncryptItVC.Client.csproj --no-restore --configuration Release
+      
+    - name: Publish Client
+      run: dotnet publish Client/EncryptItVC.Client.csproj --no-build --configuration Release --output ./publish/client
+      
+    - name: Upload Client Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-client
+        path: ./publish/client/
+
+  build-mobile-android:
+    runs-on: windows-latest
+    name: Build Android Mobile Client
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+        
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'microsoft'
+        java-version: '17'
+        
+    - name: Install MAUI Workload
+      run: dotnet workload install maui-android
+      
+    - name: Restore dependencies
+      run: dotnet restore MobileClient/EncryptItVC.MobileClient.csproj
+      
+    - name: Build Android
+      run: dotnet build MobileClient/EncryptItVC.MobileClient.csproj -c Release -f net8.0-android
+      
+    - name: Upload Android Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: android-mobile
+        path: MobileClient/bin/Release/net8.0-android/
+        
+  create-release:
+    needs: [build-server, build-client-windows, build-mobile-android]
+    runs-on: ubuntu-latest
+    name: Create Release Package
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Download Windows Client
+      uses: actions/download-artifact@v4
+      with:
+        name: windows-client
+        path: ./release/windows-client/
+        
+    - name: Download Android Mobile
+      uses: actions/download-artifact@v4
+      with:
+        name: android-mobile
+        path: ./release/android-mobile/
+        
+    - name: Copy Server Source
+      run: |
+        mkdir -p ./release/server
+        cp -r Server/* ./release/server/
+        
+    - name: Copy Documentation
+      run: |
+        cp README.md ./release/
+        cp LICENSE ./release/
+        cp INSTALL.md ./release/
+        cp MOBILE.md ./release/
+        cp USAGE.md ./release/
+        cp TROUBLESHOOTING.md ./release/
+        
+    - name: Copy Build Scripts
+      run: |
+        cp build_*.* ./release/
+        cp publish_*.* ./release/
+        cp start_*.* ./release/
+        cp install_*.* ./release/
+        cp docker-compose.yml ./release/
+        cp Dockerfile ./release/
+        
+    - name: Create Release Archive
+      run: |
+        cd release
+        tar -czf ../EncryptItVC-Release.tar.gz *
+        
+    - name: Upload Release Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: complete-release
+        path: EncryptItVC-Release.tar.gz
