@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="EncryptItVC.MobileClient.Views.ChannelPage"
+             Title="Channels"
+             BackgroundColor="{StaticResource DarkBackground}">
+    
+    <StackLayout Padding="20" Spacing="20">
+        <Label Text="Channel Management" 
+               FontSize="24" 
+               FontAttributes="Bold"
+               TextColor="White"
+               HorizontalOptions="Center"/>
+        
+        <Label Text="Channel management features will be implemented here." 
+               FontSize="14"
+               TextColor="{StaticResource Gray300}"
+               HorizontalOptions="Center"
+               HorizontalTextAlignment="Center"/>
+    </StackLayout>
+    
+</ContentPage>

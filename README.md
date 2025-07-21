@@ -13,6 +13,7 @@
 - **👑 Felhasználói jogosultságok**: Admin és csatornalérehozási jogosultságok
 - **💬 Valós idejű chat**: Szöveges üzenetküldés csatornákon belül
 - **🎮 Modern UI**: Fekete témájú, modern felhasználói felület
+- **📱 Android Mobile App**: MAUI-alapú mobil alkalmazás teljes funkcionalitással
 - **⚙️ Egyszerű beállítás**: YAML konfigurációs fájl
 
 ## 📊 Audio Minőség Specifikáció
@@ -28,7 +29,8 @@
 ## 📋 Rendszerkövetelmények
 
 - **Szerver**: .NET 9.0 vagy újabb (Windows, Linux, macOS) - Cross-platform támogatás
-- **Kliens**: Windows 10+ .NET 6.0 Desktop Runtime (csak Windows)
+- **Desktop Kliens**: Windows 10+ .NET 6.0 Desktop Runtime (csak Windows)
+- **Mobile Kliens**: Android 6.0+ (API 23+) - MAUI-alapú alkalmazás
 - **Hálózat**: TCP/UDP port hozzáférés
 - **Audio**: Mikrofon és hangszóró/fejhallgató
 
@@ -65,6 +67,23 @@ chmod +x build_server.sh
 # Futtatás
 .\Client\bin\Release\net6.0-windows\EncryptItVC.Client.exe
 ```
+
+#### Mobile Kliens (Android):
+```bash
+# Android alkalmazás buildelse (Debug)
+.\build_mobile.bat
+
+# Release APK készítése
+.\publish_mobile.bat
+
+# APK telepítése eszközre
+adb install "MobileClient\bin\Release\net8.0-android\publish\com.encryptitvc.mobile-Signed.apk"
+```
+
+**Android Fejlesztési Követelmények:**
+- .NET 8.0+ SDK
+- MAUI Android workload: `dotnet workload install maui-android`
+- Android SDK (automatikusan települ a workloaddal)
 
 ### Részletes Telepítés
 
@@ -257,12 +276,13 @@ sudo ufw allow 7778/udp
 ## 🚀 Roadmap
 
 ### v1.1 (Következő verzió)
-- [ ] 📱 Mobile kliens (Android/iOS)
+- [x] 📱 **Mobile kliens (Android)** - ✅ KÉSZ! MAUI-alapú Android alkalmazás
 - [ ] 🎚️ Voice Activity Detection (VOX)
 - [ ] 🔄 Opus codec támogatás
 - [ ] 📺 Screen sharing
 
 ### v1.2 (Jövő)
+- [ ] 📱 iOS mobile kliens
 - [ ] 🔒 End-to-End encryption
 - [ ] 📁 File sharing
 - [ ] 🎮 Game integráció
