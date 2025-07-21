@@ -1,5 +1,7 @@
 # EncryptItVC - Secure Voice Communication Platform
 
+🎙️ **EncryptItVC** is a secure, cross-platform voice communication platform that provides encrypted audio and text communication through a client-server architecture, featuring ultra-low latency audio transmission, real-time status tracking, and comprehensive channel management capabilities for both desktop and mobile environments.
+
 🎙️ **EncryptItVC** egy TeamSpeak-szerű, titkosított hang- és szövegkommunikációs platform, amely szerver-kliens architektúrával működik.
 
 ## 🚀 Jellemzők
