@@ -1,5 +1,9 @@
 # EncryptItVC - Secure Voice Communication Platform
 
+[![CI](https://github.com/Bali0531-RC/EncryptItVC/actions/workflows/ci.yml/badge.svg)](https://github.com/Bali0531-RC/EncryptItVC/actions/workflows/ci.yml)
+[![Build](https://github.com/Bali0531-RC/EncryptItVC/actions/workflows/build.yml/badge.svg)](https://github.com/Bali0531-RC/EncryptItVC/actions/workflows/build.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 🎙️ **EncryptItVC** is a secure, cross-platform voice communication platform that provides encrypted audio and text communication through a client-server architecture, featuring ultra-low latency audio transmission, real-time status tracking, and comprehensive channel management capabilities for both desktop and mobile environments.
 
 🎙️ **EncryptItVC** egy TeamSpeak-szerű, titkosított hang- és szövegkommunikációs platform, amely szerver-kliens architektúrával működik.
