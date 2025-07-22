@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/Bali0531-RC/EncryptItVC/actions/workflows/ci.yml/badge.svg)](https://github.com/Bali0531-RC/EncryptItVC/actions/workflows/ci.yml)
 [![Build](https://github.com/Bali0531-RC/EncryptItVC/actions/workflows/build.yml/badge.svg)](https://github.com/Bali0531-RC/EncryptItVC/actions/workflows/build.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 🎙️ **EncryptItVC** is a secure, cross-platform voice communication platform that provides encrypted audio and text communication through a client-server architecture, featuring ultra-low latency audio transmission, real-time status tracking, and comprehensive channel management capabilities for both desktop and mobile environments.
 
