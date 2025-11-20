@@ -298,7 +298,7 @@ namespace EncryptItVC.Client.Models
                 MessageBox.Show($"Send message failed: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 
                 // Ha a kapcsolat megszakadt, jelöljük úgy
-                if (!_tcpClient?.Connected == true)
+                if (_tcpClient?.Connected != true)
                 {
                     _isConnected = false;
                     IsAuthenticated = false;

@@ -189,16 +189,19 @@ namespace EncryptItVC.Client
         {
             if (_isReconnecting || _serverConnection == null) return;
             
-            // Ne ellenőrizzük túl gyakran, ha már tudjuk hogy nincs kapcsolat
-            if (!_serverConnection.IsConnected)
+            // Verify actual TCP connection state, not just the flag
+            var tcpConnected = _serverConnection.GetType()
+                .GetField("_tcpClient", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                ?.GetValue(_serverConnection) as System.Net.Sockets.TcpClient;
+            
+            bool actuallyConnected = tcpConnected?.Connected == true && _serverConnection.IsConnected;
+            
+            if (!actuallyConnected && _serverConnection.IsAuthenticated)
             {
-                // Csak akkor próbáljunk újracsatlakozni, ha korábban kapcsolódva voltunk
-                if (_connectionTimer.IsEnabled) // Ez jelzi, hogy korábban csatlakozva voltunk
-                {
-                    await HandleConnectionLost();
-                }
+                // Connection was lost after authentication - try to reconnect
+                await HandleConnectionLost();
             }
-            else
+            else if (actuallyConnected)
             {
                 UpdateConnectionStatus(true);
             }
