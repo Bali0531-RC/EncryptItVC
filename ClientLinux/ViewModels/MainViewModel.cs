@@ -2,9 +2,11 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EncryptItVC.ClientLinux.Models;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 
 namespace EncryptItVC.ClientLinux.ViewModels
 {
@@ -141,13 +143,13 @@ namespace EncryptItVC.ClientLinux.ViewModels
             switch (message.Type)
             {
                 case "LOGIN_SUCCESS":
-                    Username = message.Data["username"].ToString() ?? "";
-                    CurrentChannel = message.Data["currentChannel"].ToString() ?? "";
+                    Username = GetStringValue(message.Data, "username");
+                    CurrentChannel = GetStringValue(message.Data, "currentChannel");
                     break;
                     
                 case "CHANNELS_LIST":
                     Channels.Clear();
-                    if (message.Data["channels"] is Newtonsoft.Json.Linq.JArray channelsList)
+                    if (message.Data.TryGetValue("channels", out var channelsObj) && channelsObj is JArray channelsList)
                     {
                         foreach (var channelData in channelsList)
                         {
@@ -165,7 +167,7 @@ namespace EncryptItVC.ClientLinux.ViewModels
                     break;
                     
                 case "CHANNEL_JOINED":
-                    CurrentChannel = message.Data["channelName"].ToString() ?? "";
+                    CurrentChannel = GetStringValue(message.Data, "channelName");
                     ChatMessages.Add(new ChatMessage
                     {
                         Username = "SYSTEM",
@@ -201,34 +203,57 @@ namespace EncryptItVC.ClientLinux.ViewModels
                     
                 case "USERS_LIST":
                     Users.Clear();
-                    if (message.Data["users"] is Newtonsoft.Json.Linq.JArray usersList)
+                    if (message.Data.TryGetValue("users", out var usersObj) && usersObj is JArray usersList)
                     {
                         foreach (var userData in usersList)
                         {
-                            var user = new User
+                            if (userData is JObject userObj)
                             {
-                                Username = userData["username"]?.ToString() ?? "",
-                                IsMuted = userData["isMuted"]?.ToObject<bool>() ?? false,
-                                IsDeafened = userData["isDeafened"]?.ToObject<bool>() ?? false,
-                                IsAdmin = userData["isAdmin"]?.ToObject<bool>() ?? false
-                            };
-                            Users.Add(user);
+                                var user = new User
+                                {
+                                    Username = userObj["username"]?.ToString() ?? "",
+                                    IsMuted = userObj["isMuted"]?.ToObject<bool>() ?? false,
+                                    IsDeafened = userObj["isDeafened"]?.ToObject<bool>() ?? false,
+                                    IsAdmin = userObj["isAdmin"]?.ToObject<bool>() ?? false
+                                };
+                                Users.Add(user);
+                            }
                         }
                     }
                     break;
                     
                 case "USER_VOICE_STATUS":
-                    var statusUsername = message.Data["username"]?.ToString() ?? "";
+                    var statusUsername = GetStringValue(message.Data, "username");
                     var statusUser = Users.FirstOrDefault(u => u.Username == statusUsername);
                     if (statusUser != null)
                     {
-                        var isMuted = message.Data["isMuted"];
-                        var isDeafened = message.Data["isDeafened"];
-                        statusUser.IsMuted = isMuted is bool b1 ? b1 : false;
-                        statusUser.IsDeafened = isDeafened is bool b2 ? b2 : false;
+                        statusUser.IsMuted = GetBoolValue(message.Data, "isMuted");
+                        statusUser.IsDeafened = GetBoolValue(message.Data, "isDeafened");
                     }
                     break;
             }
+        }
+        
+        private static string GetStringValue(Dictionary<string, object> data, string key)
+        {
+            if (!data.TryGetValue(key, out var value)) return "";
+            
+            // Handle JToken from Newtonsoft.Json deserialization
+            if (value is JToken token)
+                return token.ToString();
+            
+            return value?.ToString() ?? "";
+        }
+        
+        private static bool GetBoolValue(Dictionary<string, object> data, string key)
+        {
+            if (!data.TryGetValue(key, out var value)) return false;
+            
+            // Handle JToken from Newtonsoft.Json deserialization
+            if (value is JToken token)
+                return token.Type == JTokenType.Boolean && (bool)token;
+            
+            return value is bool b && b;
         }
     }
 }

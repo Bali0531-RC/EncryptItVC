@@ -689,13 +689,13 @@ namespace EncryptItVC.Server
                 Data = new Dictionary<string, object>
                 {
                     ["channelName"] = channelName,
-                    ["users"] = _channels[channelName].Members.Select(username => new
+                    ["users"] = _channels[channelName].Members.Select(username => new Dictionary<string, object>
                     {
-                        username = username,
-                        isMuted = _users.ContainsKey(username) ? _users[username].IsMuted : false,
-                        isDeafened = _users.ContainsKey(username) ? _users[username].IsDeafened : false,
-                        isAdmin = _users.ContainsKey(username) ? _users[username].IsAdmin : false
-                    }).ToList()
+                        ["username"] = username,
+                        ["isMuted"] = _users.ContainsKey(username) ? _users[username].IsMuted : false,
+                        ["isDeafened"] = _users.ContainsKey(username) ? _users[username].IsDeafened : false,
+                        ["isAdmin"] = _users.ContainsKey(username) ? _users[username].IsAdmin : false
+                    }).ToList<object>()
                 }
             };
             

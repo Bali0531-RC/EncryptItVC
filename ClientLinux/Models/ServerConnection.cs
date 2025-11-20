@@ -329,11 +329,11 @@ namespace EncryptItVC.ClientLinux.Models
                             // Handle critical messages internally
                             if (message.Type == "LOGIN_SUCCESS")
                             {
-                                Username = message.Data["username"]?.ToString() ?? "";
+                                Username = GetStringValue(message.Data, "username");
                                 IsAuthenticated = true;
-                                IsAdmin = message.Data["isAdmin"] is bool admin && admin;
-                                CanCreateChannels = message.Data["canCreateChannels"] is bool canCreate && canCreate;
-                                CurrentChannel = message.Data["currentChannel"]?.ToString() ?? "";
+                                IsAdmin = GetBoolValue(message.Data, "isAdmin");
+                                CanCreateChannels = GetBoolValue(message.Data, "canCreateChannels");
+                                CurrentChannel = GetStringValue(message.Data, "currentChannel");
                                 Console.WriteLine($"Login successful! Authenticated as: {Username}");
                             }
                             else if (message.Type == "LOGIN_FAILED")
@@ -390,6 +390,28 @@ namespace EncryptItVC.ClientLinux.Models
             {
                 Console.WriteLine($"Disconnect failed: {ex.Message}");
             }
+        }
+        
+        private static string GetStringValue(Dictionary<string, object> data, string key)
+        {
+            if (!data.TryGetValue(key, out var value)) return "";
+            
+            // Handle JToken from Newtonsoft.Json deserialization
+            if (value is Newtonsoft.Json.Linq.JToken token)
+                return token.ToString();
+            
+            return value?.ToString() ?? "";
+        }
+        
+        private static bool GetBoolValue(Dictionary<string, object> data, string key)
+        {
+            if (!data.TryGetValue(key, out var value)) return false;
+            
+            // Handle JToken from Newtonsoft.Json deserialization
+            if (value is Newtonsoft.Json.Linq.JToken token)
+                return token.Type == Newtonsoft.Json.Linq.JTokenType.Boolean && (bool)token;
+            
+            return value is bool b && b;
         }
     }
 
