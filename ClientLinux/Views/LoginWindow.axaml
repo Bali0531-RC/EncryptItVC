@@ -1,0 +1,75 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:EncryptItVC.ClientLinux.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="500"
+        x:Class="EncryptItVC.ClientLinux.Views.LoginWindow"
+        x:DataType="vm:LoginViewModel"
+        Title="EncryptItVC - Login"
+        Width="400" Height="500"
+        WindowStartupLocation="CenterScreen">
+
+    <Design.DataContext>
+        <vm:LoginViewModel/>
+    </Design.DataContext>
+
+    <StackPanel Margin="40" Spacing="15">
+        <TextBlock Text="🎙️ EncryptItVC" 
+                   FontSize="32" 
+                   FontWeight="Bold"
+                   HorizontalAlignment="Center"
+                   Margin="0,0,0,20"/>
+        
+        <TextBlock Text="Voice &amp; Text Chat" 
+                   FontSize="16"
+                   HorizontalAlignment="Center"
+                   Foreground="Gray"
+                   Margin="0,0,0,30"/>
+        
+        <!-- Server Settings -->
+        <TextBlock Text="Server" FontWeight="Bold"/>
+        <TextBox Text="{Binding ServerHost}" 
+                 Watermark="Server IP or hostname"
+                 IsEnabled="{Binding !IsConnecting}"/>
+        
+        <TextBox Text="{Binding ServerPort}" 
+                 Watermark="Port (default: 7777)"
+                 IsEnabled="{Binding !IsConnecting}"/>
+        
+        <!-- Login Credentials -->
+        <TextBlock Text="Credentials" FontWeight="Bold" Margin="0,10,0,0"/>
+        <TextBox Text="{Binding Username}" 
+                 Watermark="Username"
+                 IsEnabled="{Binding !IsConnecting}"/>
+        
+        <TextBox Text="{Binding Password}" 
+                 Watermark="Password"
+                 PasswordChar="●"
+                 IsEnabled="{Binding !IsConnecting}"/>
+        
+        <!-- Status Message -->
+        <TextBlock Text="{Binding StatusMessage}" 
+                   Foreground="{Binding IsConnecting, Converter={StaticResource BoolToColorConverter}}"
+                   HorizontalAlignment="Center"
+                   TextWrapping="Wrap"
+                   Margin="0,10,0,0"/>
+        
+        <!-- Buttons -->
+        <Button Content="Login" 
+                Command="{Binding LoginCommand}"
+                IsEnabled="{Binding !IsConnecting}"
+                HorizontalAlignment="Stretch"
+                Margin="0,10,0,0"/>
+        
+        <Button Content="Register" 
+                Command="{Binding RegisterCommand}"
+                IsEnabled="{Binding !IsConnecting}"
+                HorizontalAlignment="Stretch"/>
+        
+        <!-- Loading Indicator -->
+        <ProgressBar IsIndeterminate="True" 
+                     IsVisible="{Binding IsConnecting}"
+                     Margin="0,10,0,0"/>
+    </StackPanel>
+</Window>

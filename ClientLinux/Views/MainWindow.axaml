@@ -1,0 +1,158 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:EncryptItVC.ClientLinux.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="700"
+        x:Class="EncryptItVC.ClientLinux.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="EncryptItVC"
+        Width="1000" Height="700"
+        WindowStartupLocation="CenterScreen">
+
+    <Design.DataContext>
+        <vm:MainViewModel/>
+    </Design.DataContext>
+
+    <Grid ColumnDefinitions="250,*,200">
+        <!-- Left Panel - Channels -->
+        <Border Grid.Column="0" Background="#2C2F33" Padding="10">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top" Spacing="5" Margin="0,0,0,10">
+                    <TextBlock Text="Channels" FontSize="18" FontWeight="Bold" Foreground="White"/>
+                    <Button Content="🔄 Refresh" 
+                            Command="{Binding RefreshChannelsCommand}"
+                            HorizontalAlignment="Stretch"/>
+                </StackPanel>
+                
+                <ListBox ItemsSource="{Binding Channels}"
+                         Background="Transparent"
+                         BorderThickness="0">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                <TextBlock Text="{Binding Name}" Foreground="White"/>
+                                <TextBlock Text="{Binding MemberCount, StringFormat='({0})'}" 
+                                         Foreground="Gray" FontSize="12"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+        </Border>
+
+        <!-- Center Panel - Chat -->
+        <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto" Background="#36393F">
+            <!-- Header -->
+            <Border Grid.Row="0" Background="#202225" Padding="15,10">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <TextBlock Text="📁" FontSize="18"/>
+                    <TextBlock Text="{Binding CurrentChannel}" 
+                             FontSize="18" FontWeight="Bold" Foreground="White"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Chat Messages -->
+            <Border Grid.Row="1" Padding="15" ClipToBounds="True">
+                <ScrollViewer>
+                    <ItemsControl ItemsSource="{Binding ChatMessages}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding DisplayText}" 
+                                         Foreground="White"
+                                         TextWrapping="Wrap"
+                                         Margin="0,2"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Border>
+
+            <!-- Chat Input -->
+            <Border Grid.Row="2" Background="#40444B" Padding="10">
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBox Grid.Column="0"
+                             Text="{Binding ChatInput}"
+                             Watermark="Type a message..."
+                             Background="#202225"
+                             Foreground="White"
+                             BorderThickness="0"
+                             Padding="10"/>
+                    <Button Grid.Column="1"
+                            Content="Send"
+                            Command="{Binding SendMessageCommand}"
+                            Margin="5,0,0,0"
+                            MinWidth="80"/>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Right Panel - Users & Voice -->
+        <Border Grid.Column="2" Background="#2C2F33" Padding="10">
+            <DockPanel>
+                <!-- User Info -->
+                <Border DockPanel.Dock="Top" 
+                        Background="#202225" 
+                        Padding="10"
+                        CornerRadius="5"
+                        Margin="0,0,0,10">
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="{Binding Username}" 
+                                 FontWeight="Bold" 
+                                 Foreground="White"
+                                 FontSize="14"/>
+                        <TextBlock Text="{Binding CurrentChannel, StringFormat='In: {0}'}" 
+                                 Foreground="Gray"
+                                 FontSize="11"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Voice Controls -->
+                <StackPanel DockPanel.Dock="Top" Spacing="5" Margin="0,0,0,15">
+                    <TextBlock Text="Voice Controls" FontSize="14" FontWeight="Bold" Foreground="White"/>
+                    
+                    <Button Content="{Binding IsVoiceActive}"
+                            Command="{Binding ToggleVoiceCommand}"
+                            HorizontalAlignment="Stretch"/>
+                    
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="5">
+                        <Button Grid.Column="0"
+                                Content="{Binding IsMuted}"
+                                Command="{Binding ToggleMuteCommand}"
+                                HorizontalAlignment="Stretch"/>
+                        
+                        <Button Grid.Column="1"
+                                Content="{Binding IsDeafened}"
+                                Command="{Binding ToggleDeafenCommand}"
+                                HorizontalAlignment="Stretch"/>
+                    </Grid>
+                </StackPanel>
+
+                <!-- Users List -->
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Top" Spacing="5" Margin="0,0,0,10">
+                        <TextBlock Text="Users" FontSize="14" FontWeight="Bold" Foreground="White"/>
+                        <Button Content="🔄" 
+                                Command="{Binding RefreshUsersCommand}"
+                                HorizontalAlignment="Stretch"
+                                FontSize="10"
+                                Padding="5"/>
+                    </StackPanel>
+                    
+                    <ListBox ItemsSource="{Binding Users}"
+                             Background="Transparent"
+                             BorderThickness="0">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                    <TextBlock Text="{Binding StatusIcon}"/>
+                                    <TextBlock Text="{Binding DisplayName}" Foreground="White"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </DockPanel>
+        </Border>
+    </Grid>
+</Window>
