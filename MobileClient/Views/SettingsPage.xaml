@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="EncryptItVC.MobileClient.Views.SettingsPage"
+             Title="Settings"
+             BackgroundColor="{StaticResource DarkBackground}">
+    
+    <ScrollView>
+        <StackLayout Padding="20" Spacing="20">
+            
+            <Label Text="Voice Settings" 
+                   FontSize="20" 
+                   FontAttributes="Bold"
+                   TextColor="White"/>
+            
+            <Frame BackgroundColor="{StaticResource Secondary}" 
+                   BorderColor="Transparent"
+                   CornerRadius="10"
+                   Padding="20">
+                <StackLayout Spacing="15">
+                    <Label Text="Audio Quality" 
+                           FontSize="16"
+                           TextColor="White"/>
+                    
+                    <Slider Minimum="0" Maximum="100" Value="70" />
+                    
+                    <Label Text="Microphone Sensitivity" 
+                           FontSize="16"
+                           TextColor="White"/>
+                    
+                    <Slider Minimum="0" Maximum="100" Value="50" />
+                    
+                    <Switch x:Name="AutoGainSwitch">
+                        <Switch.Triggers>
+                            <DataTrigger TargetType="Switch" Binding="{Binding Source={x:Reference AutoGainSwitch}, Path=IsToggled}" Value="True">
+                                <Setter Property="ThumbColor" Value="{StaticResource Tertiary}" />
+                            </DataTrigger>
+                        </Switch.Triggers>
+                    </Switch>
+                    <Label Text="Auto Gain Control" 
+                           FontSize="14"
+                           TextColor="{StaticResource Gray300}"/>
+                </StackLayout>
+            </Frame>
+            
+            <Label Text="Connection Settings" 
+                   FontSize="20" 
+                   FontAttributes="Bold"
+                   TextColor="White"/>
+            
+            <Frame BackgroundColor="{StaticResource Secondary}" 
+                   BorderColor="Transparent"
+                   CornerRadius="10"
+                   Padding="20">
+                <StackLayout Spacing="15">
+                    <Label Text="Auto-Reconnect" 
+                           FontSize="16"
+                           TextColor="White"/>
+                    
+                    <Switch x:Name="AutoReconnectSwitch" IsToggled="True">
+                        <Switch.Triggers>
+                            <DataTrigger TargetType="Switch" Binding="{Binding Source={x:Reference AutoReconnectSwitch}, Path=IsToggled}" Value="True">
+                                <Setter Property="ThumbColor" Value="{StaticResource Tertiary}" />
+                            </DataTrigger>
+                        </Switch.Triggers>
+                    </Switch>
+                    
+                    <Label Text="Voice Compression" 
+                           FontSize="16"
+                           TextColor="White"/>
+                    
+                    <Picker Title="Select Quality">
+                        <Picker.Items>
+                            <x:String>High Quality (Uncompressed)</x:String>
+                            <x:String>Medium Quality (Light Compression)</x:String>
+                            <x:String>Low Bandwidth (High Compression)</x:String>
+                        </Picker.Items>
+                    </Picker>
+                </StackLayout>
+            </Frame>
+            
+            <Label Text="App Info" 
+                   FontSize="20" 
+                   FontAttributes="Bold"
+                   TextColor="White"/>
+            
+            <Frame BackgroundColor="{StaticResource Secondary}" 
+                   BorderColor="Transparent"
+                   CornerRadius="10"
+                   Padding="20">
+                <StackLayout Spacing="10">
+                    <Label Text="EncryptItVC Mobile v2.0" 
+                           FontSize="16"
+                           TextColor="White"/>
+                    
+                    <Label Text="Secure Voice Communication Platform" 
+                           FontSize="14"
+                           TextColor="{StaticResource Gray300}"/>
+                    
+                    <Label Text="© 2025 Chorus - Bali0531" 
+                           FontSize="12"
+                           TextColor="{StaticResource Gray300}"/>
+                </StackLayout>
+            </Frame>
+            
+        </StackLayout>
+    </ScrollView>
+    
+</ContentPage>

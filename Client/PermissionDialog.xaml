@@ -1,0 +1,64 @@
+<Window x:Class="EncryptItVC.Client.PermissionDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        Title="Grant Permission" Height="300" Width="400"
+        ResizeMode="NoResize" WindowStartupLocation="CenterOwner"
+        Background="#FF1E1E1E">
+    
+    <Window.Resources>
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        <Style TargetType="RadioButton">
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+    </Window.Resources>
+    
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        
+        <!-- Header -->
+        <TextBlock Grid.Row="0" Text="Grant Permission" FontSize="18" FontWeight="Bold" 
+                   Foreground="#FFE91E63" HorizontalAlignment="Center" Margin="0,0,0,20"/>
+        
+        <!-- Form -->
+        <StackPanel Grid.Row="1">
+            <TextBox x:Name="UsernameTextBox" 
+                     materialDesign:HintAssist.Hint="Username" 
+                     Margin="0,0,0,20"
+                     Background="#FF2A2A2A" Foreground="White" 
+                     BorderBrush="#FF404040"/>
+            
+            <TextBlock Text="Select Permission:" FontWeight="Bold" 
+                       Margin="0,0,0,10" Foreground="#FFE91E63"/>
+            
+            <RadioButton x:Name="CreateChannelsRadio" Content="Create Channels" 
+                         GroupName="Permission" Margin="0,0,0,10" IsChecked="True"/>
+            
+            <RadioButton x:Name="AdminRadio" Content="Admin (Full Access)" 
+                         GroupName="Permission" Margin="0,0,0,10"/>
+            
+            <TextBlock Text="⚠️ Admin permission grants full server access including user management." 
+                       FontSize="12" Foreground="Orange" TextWrapping="Wrap" 
+                       Margin="0,10,0,0"/>
+        </StackPanel>
+        
+        <!-- Buttons -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button x:Name="CancelButton" Content="Cancel" 
+                    Click="CancelButton_Click" Margin="0,0,10,0"
+                    Background="#FF757575" BorderBrush="#FF757575" 
+                    Foreground="White" Padding="15,5"/>
+            
+            <Button x:Name="GrantButton" Content="Grant" 
+                    Click="GrantButton_Click" 
+                    Background="#FFE91E63" BorderBrush="#FFE91E63" 
+                    Foreground="White" Padding="15,5"/>
+        </StackPanel>
+    </Grid>
+</Window>

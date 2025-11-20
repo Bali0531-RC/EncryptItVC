@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  encryptitvc-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "7777:7777"
+      - "7778:7778"
+    volumes:
+      - ./Server/config.yml:/app/config.yml
+      - ./data:/app/data
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+    networks:
+      - encryptitvc-network
+
+networks:
+  encryptitvc-network:
+    driver: bridge

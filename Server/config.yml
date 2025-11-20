@@ -1,0 +1,24 @@
+server:
+  host: "0.0.0.0"
+  port: 7777
+  name: "EncryptItVC Server"
+  
+security:
+  encryption_key: "your-32-character-secret-key-here"
+  max_connections: 100
+  
+admin:
+  username: "admin"
+  password: "admin123"
+  
+database:
+  type: "sqlite"
+  path: "server_data.db"
+  
+channels:
+  default_channel: "Lobby"
+  max_channels: 50
+  
+logging:
+  level: "INFO"
+  file: "server.log"
