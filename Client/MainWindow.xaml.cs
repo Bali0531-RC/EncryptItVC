@@ -530,19 +530,23 @@ namespace EncryptItVC.Client
                     {
                         foreach (var userObj in channelUsers)
                         {
-                            var username = userObj["username"]?.ToString() ?? "";
-                            var isMuted = userObj["isMuted"]?.ToObject<bool>() ?? false;
-                            var isDeafened = userObj["isDeafened"]?.ToObject<bool>() ?? false;
-                            var isAdmin = userObj["isAdmin"]?.ToObject<bool>() ?? false;
-                            
-                            _users.Add(username);
-                            usersList.Add(new User 
-                            { 
-                                Username = username,
-                                IsMuted = isMuted,
-                                IsDeafened = isDeafened,
-                                IsAdmin = isAdmin
-                            });
+                            // Handle JObject (new server format with Dictionary)
+                            if (userObj is Newtonsoft.Json.Linq.JObject jObj)
+                            {
+                                var username = jObj["username"]?.ToString() ?? "";
+                                var isMuted = jObj["isMuted"]?.ToObject<bool>() ?? false;
+                                var isDeafened = jObj["isDeafened"]?.ToObject<bool>() ?? false;
+                                var isAdmin = jObj["isAdmin"]?.ToObject<bool>() ?? false;
+                                
+                                _users.Add(username);
+                                usersList.Add(new User 
+                                { 
+                                    Username = username,
+                                    IsMuted = isMuted,
+                                    IsDeafened = isDeafened,
+                                    IsAdmin = isAdmin
+                                });
+                            }
                         }
                     }
                     
