@@ -111,18 +111,18 @@
                 <StackPanel DockPanel.Dock="Top" Spacing="5" Margin="0,0,0,15">
                     <TextBlock Text="Voice Controls" FontSize="14" FontWeight="Bold" Foreground="White"/>
                     
-                    <Button Content="{Binding IsVoiceActive}"
+                    <Button Content="🎤 Toggle Voice"
                             Command="{Binding ToggleVoiceCommand}"
                             HorizontalAlignment="Stretch"/>
                     
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="5">
                         <Button Grid.Column="0"
-                                Content="{Binding IsMuted}"
+                                Content="🔇 Mute"
                                 Command="{Binding ToggleMuteCommand}"
                                 HorizontalAlignment="Stretch"/>
                         
                         <Button Grid.Column="1"
-                                Content="{Binding IsDeafened}"
+                                Content="🔇 Deafen"
                                 Command="{Binding ToggleDeafenCommand}"
                                 HorizontalAlignment="Stretch"/>
                     </Grid>
