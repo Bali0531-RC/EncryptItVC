@@ -86,24 +86,72 @@ namespace EncryptItVC.ClientLinux.Models
                 _serverHost = host;
                 _serverPort = port;
                 
-                _tcpClient = new TcpClient();
-                await _tcpClient.ConnectAsync(host, port);
-                _stream = _tcpClient.GetStream();
+                Console.WriteLine($"Attempting to connect to {host}:{port}...");
                 
-                _udpClient = new UdpClient(0);
-                _udpClient.Connect(host, port + 1);
+                _tcpClient = new TcpClient();
+                
+                // Set timeout for remote connections
+                var connectTask = _tcpClient.ConnectAsync(host, port);
+                var timeoutTask = Task.Delay(10000); // 10 second timeout
+                
+                var completedTask = await Task.WhenAny(connectTask, timeoutTask);
+                
+                if (completedTask == timeoutTask)
+                {
+                    Console.WriteLine("Connection timeout - check if server is running and firewall allows TCP port " + port);
+                    _tcpClient?.Close();
+                    return false;
+                }
+                
+                await connectTask; // Ensure any exceptions are thrown
+                
+                if (!_tcpClient.Connected)
+                {
+                    Console.WriteLine("Failed to establish TCP connection");
+                    return false;
+                }
+                
+                _stream = _tcpClient.GetStream();
+                _stream.ReadTimeout = 30000; // 30 second read timeout
+                _stream.WriteTimeout = 10000; // 10 second write timeout
+                
+                Console.WriteLine($"TCP connected to {host}:{port}");
+                
+                // Setup UDP for voice
+                try
+                {
+                    _udpClient = new UdpClient(0);
+                    _udpClient.Connect(host, port + 1);
+                    Console.WriteLine($"UDP connected to {host}:{port + 1}");
+                }
+                catch (Exception udpEx)
+                {
+                    Console.WriteLine($"UDP connection warning: {udpEx.Message} - Voice may not work");
+                    // Continue anyway, voice won't work but chat will
+                }
                 
                 IsConnected = true;
                 
                 _ = Task.Run(ReceiveMessagesAsync);
                 
-                Console.WriteLine($"Connected to server {host}:{port}");
+                Console.WriteLine($"Successfully connected to server {host}:{port}");
                 
                 return true;
+            }
+            catch (SocketException ex)
+            {
+                Console.WriteLine($"Connection failed (SocketException): {ex.Message}");
+                Console.WriteLine($"Error code: {ex.SocketErrorCode}");
+                Console.WriteLine("Make sure:");
+                Console.WriteLine($"1. Server is running on {host}:{port}");
+                Console.WriteLine($"2. Firewall allows TCP port {port}");
+                Console.WriteLine($"3. VPS security groups allow inbound traffic on port {port}");
+                return false;
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Connection failed: {ex.Message}");
+                Console.WriteLine($"Exception type: {ex.GetType().Name}");
                 return false;
             }
         }
