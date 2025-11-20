@@ -860,26 +860,29 @@ namespace EncryptItVC.Server
                 }
 
                 // Broadcast to all clients in the same channel except sender
+                List<(string username, IPEndPoint endpoint)> recipients;
                 lock (_lockObject)
                 {
-                    foreach (var client in _clients)
+                    recipients = _clients
+                        .Where(c => c.CurrentChannel == senderChannel && 
+                                    c.Username != senderUsername &&
+                                    c.User != null &&
+                                    !c.User.IsDeafened &&
+                                    _clientVoiceEndpoints.ContainsKey(c.Username))
+                        .Select(c => (c.Username, _clientVoiceEndpoints[c.Username]))
+                        .ToList();
+                }
+
+                // Send outside the lock
+                foreach (var (username, endpoint) in recipients)
+                {
+                    try
                     {
-                        if (client.CurrentChannel == senderChannel && 
-                            client.Username != senderUsername &&
-                            client.User != null &&
-                            !client.User.IsDeafened && // Don't send to deafened users
-                            _clientVoiceEndpoints.ContainsKey(client.Username))
-                        {
-                            try
-                            {
-                                var clientEndpoint = _clientVoiceEndpoints[client.Username];
-                                await _udpClient.SendAsync(voiceData, voiceData.Length, clientEndpoint);
-                            }
-                            catch (Exception ex)
-                            {
-                                Console.WriteLine($"Error sending voice to {client.Username}: {ex.Message}");
-                            }
-                        }
+                        await _udpClient.SendAsync(voiceData, voiceData.Length, endpoint);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error sending voice to {username}: {ex.Message}");
                     }
                 }
             }
