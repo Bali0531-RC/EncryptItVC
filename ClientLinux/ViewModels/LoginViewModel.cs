@@ -75,22 +75,25 @@ namespace EncryptItVC.ClientLinux.ViewModels
                 
                 if (success)
                 {
-                    // Wait for login response
-                    await Task.Delay(500);
+                    // Wait for login response from server
+                    for (int i = 0; i < 20; i++) // Wait up to 2 seconds
+                    {
+                        await Task.Delay(100);
+                        
+                        if (_serverConnection.IsAuthenticated)
+                        {
+                            StatusMessage = "Login successful!";
+                            await Task.Delay(300); // Brief pause to show success message
+                            LoginSuccessful?.Invoke(_serverConnection);
+                            return;
+                        }
+                    }
                     
-                    if (_serverConnection.IsAuthenticated)
-                    {
-                        StatusMessage = "Login successful!";
-                        LoginSuccessful?.Invoke(_serverConnection);
-                    }
-                    else
-                    {
-                        StatusMessage = "Login failed - Invalid credentials";
-                    }
+                    StatusMessage = "Login failed - No response from server";
                 }
                 else
                 {
-                    StatusMessage = "Login failed";
+                    StatusMessage = "Login failed - Could not send request";
                 }
             }
             catch (Exception ex)

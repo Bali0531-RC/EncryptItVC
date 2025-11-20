@@ -326,6 +326,31 @@ namespace EncryptItVC.ClientLinux.Models
                         var message = JsonConvert.DeserializeObject<Message>(messageData);
                         if (message != null)
                         {
+                            // Handle critical messages internally
+                            if (message.Type == "LOGIN_SUCCESS")
+                            {
+                                Username = message.Data["username"]?.ToString() ?? "";
+                                IsAuthenticated = true;
+                                IsAdmin = message.Data["isAdmin"] is bool admin && admin;
+                                CanCreateChannels = message.Data["canCreateChannels"] is bool canCreate && canCreate;
+                                CurrentChannel = message.Data["currentChannel"]?.ToString() ?? "";
+                                Console.WriteLine($"Login successful! Authenticated as: {Username}");
+                            }
+                            else if (message.Type == "LOGIN_FAILED")
+                            {
+                                IsAuthenticated = false;
+                                Console.WriteLine($"Login failed: {message.Content}");
+                            }
+                            else if (message.Type == "REGISTER_SUCCESS")
+                            {
+                                Console.WriteLine("Registration successful!");
+                            }
+                            else if (message.Type == "REGISTER_FAILED")
+                            {
+                                Console.WriteLine($"Registration failed: {message.Content}");
+                            }
+                            
+                            // Invoke the event for UI to process
                             MessageReceived?.Invoke(message);
                         }
                     }
